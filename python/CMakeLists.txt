@@ -82,6 +82,15 @@ endfunction()
 ocp_ensure_nanobind()
 
 function(ocp_ensure_openarm_can)
+  set(OPENARM_CAN_BUILD_CLI OFF CACHE BOOL "" FORCE)
+  set(OPENARM_CAN_LOCAL_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+  if(EXISTS "${OPENARM_CAN_LOCAL_SOURCE}/include/openarm/zk_motor/zk_protocol.hpp")
+    add_subdirectory("${OPENARM_CAN_LOCAL_SOURCE}"
+                     "${CMAKE_CURRENT_BINARY_DIR}/openarm_can")
+    add_library(OpenArmCAN::openarm_can ALIAS openarm_can)
+    return()
+  endif()
+
   # We can use FIND_PACKAGE_ARGS in fetchcontent_declare() instead of
   # explicit find_package() when we require CMake 3.24 or later.
   find_package(OpenArmCAN ${openarm_can_python_VERSION})

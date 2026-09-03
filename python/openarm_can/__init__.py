@@ -17,7 +17,7 @@
 OpenArm CAN Python bindings for motor control via SocketCAN.
 
 This package provides Python bindings for the OpenArm motor control system,
-allowing you to control DAMIAO motors through SocketCAN.
+allowing you to control DAMIAO and ZK motors through SocketCAN.
 """
 
 from .openarm_can import *
@@ -42,6 +42,9 @@ __all__ = [
 
     # Main C++ classes (1:1 mapping)
     "Motor",
+    "OpenArm",
+    "ZKMotor",
+    "ZKOpenArm",
     "MotorControl",
     "CANSocket",           # Low-level socket with file descriptor access
     "CANDevice",           # Base CAN device class

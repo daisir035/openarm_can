@@ -15,6 +15,8 @@
 cmake_minimum_required(VERSION 3.22)
 project(openarm_can VERSION 1.3.4)
 
+option(OPENARM_CAN_BUILD_CLI "Build the openarm-can command-line tools" ON)
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,12 +36,14 @@ add_library(
   src/openarm/can/socket/arm_component.cpp
   src/openarm/can/socket/gripper_component.cpp
   src/openarm/can/socket/openarm.cpp
+  src/openarm/can/socket/zk_openarm.cpp
   src/openarm/canbus/can_device_collection.cpp
   src/openarm/canbus/can_socket.cpp
   src/openarm/damiao_motor/dm_motor.cpp
   src/openarm/damiao_motor/dm_motor_control.cpp
   src/openarm/damiao_motor/dm_motor_device.cpp
-  src/openarm/damiao_motor/dm_motor_device_collection.cpp)
+  src/openarm/damiao_motor/dm_motor_device_collection.cpp
+  src/openarm/zk_motor/zk_protocol.cpp)
 set_target_properties(
   openarm_can
   PROPERTIES POSITION_INDEPENDENT_CODE ON
@@ -58,6 +62,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.23)
            include/openarm/can/socket/arm_component.hpp
            include/openarm/can/socket/gripper_component.hpp
            include/openarm/can/socket/openarm.hpp
+           include/openarm/can/socket/zk_openarm.hpp
            include/openarm/canbus/can_device.hpp
            include/openarm/canbus/can_device_collection.hpp
            include/openarm/canbus/can_socket.hpp
@@ -65,7 +70,9 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.23)
            include/openarm/damiao_motor/dm_motor_constants.hpp
            include/openarm/damiao_motor/dm_motor_control.hpp
            include/openarm/damiao_motor/dm_motor_device.hpp
-           include/openarm/damiao_motor/dm_motor_device_collection.hpp)
+           include/openarm/damiao_motor/dm_motor_device_collection.hpp
+           include/openarm/zk_motor/zk_motor.hpp
+           include/openarm/zk_motor/zk_protocol.hpp)
   install(
     TARGETS openarm_can
     EXPORT openarm_can_export
@@ -126,24 +133,26 @@ install(TARGETS openarm-can-demo DESTINATION ${CMAKE_INSTALL_BINDIR})
 # ==============================================================================
 # OpenArm Unified CLI Tool (openarm-can)
 # ==============================================================================
-find_package(CLI11 REQUIRED)
-add_executable(
-  openarm-can-cli
-  setup/cli/openarm_cli.cpp
-  setup/cli/commands/can_configure_commands.cpp
-  setup/cli/commands/motor_status_commands.cpp
-  setup/cli/commands/change_motor_baudrate_commands.cpp
-  setup/cli/commands/zero_position_commands.cpp
-  setup/cli/commands/motor_read_param_commands.cpp
-  setup/cli/commands/monitor_motor_status_commands.cpp
-  setup/cli/commands/discover_motor_commands.cpp
-  setup/cli/commands/change_motor_id_commands.cpp
-  setup/cli/commands/write_motor_param_commands.cpp
-  setup/cli/commands/clear_error_commands.cpp)
-target_include_directories(
-  openarm-can-cli PRIVATE setup/cli ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(openarm-can-cli PRIVATE openarm_can CLI11::CLI11)
-install(TARGETS openarm-can-cli DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(OPENARM_CAN_BUILD_CLI)
+  find_package(CLI11 REQUIRED)
+  add_executable(
+    openarm-can-cli
+    setup/cli/openarm_cli.cpp
+    setup/cli/commands/can_configure_commands.cpp
+    setup/cli/commands/motor_status_commands.cpp
+    setup/cli/commands/change_motor_baudrate_commands.cpp
+    setup/cli/commands/zero_position_commands.cpp
+    setup/cli/commands/motor_read_param_commands.cpp
+    setup/cli/commands/monitor_motor_status_commands.cpp
+    setup/cli/commands/discover_motor_commands.cpp
+    setup/cli/commands/change_motor_id_commands.cpp
+    setup/cli/commands/write_motor_param_commands.cpp
+    setup/cli/commands/clear_error_commands.cpp)
+  target_include_directories(
+    openarm-can-cli PRIVATE setup/cli ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(openarm-can-cli PRIVATE openarm_can CLI11::CLI11)
+  install(TARGETS openarm-can-cli DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 
 # Install scripts
 install(
@@ -160,5 +169,7 @@ install(
 
 # Add tests
 if(BUILD_TESTING)
-  # add_subdirectory(test)
+  add_executable(zk-protocol-test tests/zk_protocol_test.cpp)
+  target_link_libraries(zk-protocol-test PRIVATE openarm_can)
+  add_test(NAME zk-protocol-test COMMAND zk-protocol-test)
 endif()

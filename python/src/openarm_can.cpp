@@ -24,6 +24,7 @@
 #include <openarm/can/socket/arm_component.hpp>
 #include <openarm/can/socket/gripper_component.hpp>
 #include <openarm/can/socket/openarm.hpp>
+#include <openarm/can/socket/zk_openarm.hpp>
 #include <openarm/canbus/can_device.hpp>
 #include <openarm/canbus/can_device_collection.hpp>
 #include <openarm/canbus/can_socket.hpp>
@@ -32,6 +33,7 @@
 #include <openarm/damiao_motor/dm_motor_control.hpp>
 #include <openarm/damiao_motor/dm_motor_device.hpp>
 #include <openarm/damiao_motor/dm_motor_device_collection.hpp>
+#include <openarm/zk_motor/zk_motor.hpp>
 
 using namespace openarm::canbus;
 using namespace openarm::damiao_motor;
@@ -229,6 +231,18 @@ NB_MODULE(openarm_can, m) {
         .def("is_enabled", &Motor::is_enabled)
         .def("get_param", &Motor::get_param, nb::arg("rid"))
         .def_static("get_limit_param", &Motor::get_limit_param, nb::arg("motor_type"));
+
+    nb::class_<openarm::zk_motor::Motor>(m, "ZKMotor")
+        .def("get_motor_id", &openarm::zk_motor::Motor::get_motor_id)
+        .def("get_position", &openarm::zk_motor::Motor::get_position)
+        .def("get_velocity", &openarm::zk_motor::Motor::get_velocity)
+        .def("get_torque", &openarm::zk_motor::Motor::get_torque)
+        .def("get_state_tmos", &openarm::zk_motor::Motor::get_state_tmos)
+        .def("get_state_trotor", &openarm::zk_motor::Motor::get_state_trotor)
+        .def("get_voltage", &openarm::zk_motor::Motor::get_voltage)
+        .def("get_status", &openarm::zk_motor::Motor::get_status)
+        .def("is_enabled", &openarm::zk_motor::Motor::is_enabled)
+        .def("has_fault", &openarm::zk_motor::Motor::has_fault);
 
     // MotorControl class
     nb::class_<CanPacketEncoder>(m, "CanPacketEncoder")
@@ -471,4 +485,27 @@ NB_MODULE(openarm_can, m) {
         .def("recv_all", &OpenArm::recv_all, nb::arg("first_timeout_us") = 500)
         .def("set_callback_mode_all", &OpenArm::set_callback_mode_all, nb::arg("callback_mode"))
         .def("query_param_all", &OpenArm::query_param_all, nb::arg("rid"));
+
+    nb::class_<ZKOpenArm>(m, "ZKOpenArm")
+        .def(nb::init<const std::string&, const std::vector<uint8_t>&, uint16_t>(),
+             nb::arg("can_interface"),
+             nb::arg("motor_ids") = std::vector<uint8_t>{1, 2, 3, 4, 5, 6, 7},
+             nb::arg("message_id") = openarm::zk_motor::DEFAULT_MESSAGE_ID)
+        .def("can_interface", &ZKOpenArm::can_interface)
+        .def("can_fd_enabled", &ZKOpenArm::can_fd_enabled)
+        .def("get_arm", &ZKOpenArm::get_arm, nb::rv_policy::reference)
+        .def("get_motor_ids", &ZKOpenArm::get_motor_ids)
+        .def("get_motors", &ZKOpenArm::get_motors)
+        .def("last_received_count", &ZKOpenArm::last_received_count)
+        .def("has_gripper", &ZKOpenArm::has_gripper)
+        .def("enable_all", &ZKOpenArm::enable_all)
+        .def("disable_all", &ZKOpenArm::disable_all)
+        .def("set_zero_all", &ZKOpenArm::set_zero_all)
+        .def("refresh_all", &ZKOpenArm::refresh_all)
+        .def("recv_all", &ZKOpenArm::recv_all, nb::arg("first_timeout_us") = 1000)
+        .def("mit_control_one", &ZKOpenArm::mit_control_one, nb::arg("index"),
+             nb::arg("mit_param"))
+        .def("mit_control_all", &ZKOpenArm::mit_control_all, nb::arg("mit_params"))
+        .def("set_callback_mode_all", &ZKOpenArm::set_callback_mode_all,
+             nb::arg("callback_mode"));
 }

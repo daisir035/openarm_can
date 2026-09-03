@@ -1,6 +1,12 @@
 # OpenArm CAN Library
 
-A C++ library for CAN communication with OpenArm robotic hardware, supporting Damiao motors over CAN/CAN-FD interfaces.
+[简体中文](README.zh-CN.md) | English
+
+A C++ library for CAN communication with OpenArm robotic hardware. This fork
+provides the ZK CAN FD backend used by downstream forks in place of the
+original Damiao backend. The Damiao classes remain for source compatibility.
+IDs 1-6 use one multi-joint frame; arm ID 7 and gripper ID 8 both use
+single-joint MIT mode.
 This library is a part of [OpenArm](https://github.com/enactic/openarm/). See detailed setup guide and docs [here](https://docs.openarm.dev/software/can).
 
 
@@ -77,6 +83,15 @@ openarm-can-configure-socketcan can0
 openarm-can-configure-socketcan can0 -fd
 ```
 
+For ZK motors, configure the exact nominal and data rates from the V1.4
+protocol before starting a program:
+
+```bash
+sudo ip link set can0 down
+sudo ip link set can0 txqueuelen 1000
+sudo ip link set can0 up type can fd on bitrate 1000000 dbitrate 5000000
+```
+
 ### 3. CLI Tool
 
 `openarm-can-cli` provides a command-line interface for motor configuration and diagnostics.
@@ -116,6 +131,26 @@ openarm.init_arm_motors(motor_types, send_can_ids, recv_can_ids);
 openarm.enable_all();
 ```
 
+ZK uses one 64-byte host frame for arm motors 1-6. Motor 7 and gripper motor 8
+both use 8-byte single-joint MIT CAN FD frames. All feedback frames use their
+motor ID:
+
+```cpp
+#include <openarm/can/socket/zk_openarm.hpp>
+
+openarm::can::socket::ZKOpenArm arm("can0", {1, 2, 3, 4, 5, 6, 7, 8});
+arm.enable_all();
+arm.mit_control_all(std::vector<openarm::damiao_motor::MITParam>(
+    8, {0, 0, 0, 0, 0}));
+arm.refresh_all();  // Send zero MIT commands to request fresh state.
+arm.recv_all(5000);
+```
+
+`set_zero_all()` performs the hardware sequence validated for ZK V1.4:
+disable, set zero, enable, then send zero torque for fresh feedback. Motors
+1-6 use the multi-joint `0xFC`/`0xFD`/`0xEF` commands. Motors 7 and 8 use the
+single-joint extension commands `8A 01`/`8A 00`/`82`, all as CAN FD frames.
+
 See [dev/README.md](dev/README.md) for how to build.
 
 ### 4. Python (🚧 EXPERIMENTAL - TEMPORARY 🚧)
@@ -150,6 +185,23 @@ arm = oa.OpenArm("can0", True)  # CAN-FD enabled
 arm.init_arm_motors([oa.MotorType.DM4310], [0x01], [0x11])
 arm.enable_all()
 ```
+
+The ZK backend is also available from the locally built wheel:
+
+```python
+import openarm_can as oa
+
+arm = oa.ZKOpenArm("can0", [1, 2, 3, 4, 5, 6, 7, 8])
+arm.enable_all()
+arm.mit_control_all([oa.MITParam(0, 0, 0, 0, 0) for _ in range(8)])
+arm.refresh_all()
+arm.recv_all(5000)
+assert arm.last_received_count() == 8
+```
+
+The protocol document does not define the CRC-8 parameters. Byte 63 remains
+zero to match the tested ZK hardware; update it only when the manufacturer
+provides the polynomial, initial value, reflection, and XOR value.
 
 ### Examples
 
